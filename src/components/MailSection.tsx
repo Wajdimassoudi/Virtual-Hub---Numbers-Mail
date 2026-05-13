@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Mail, RefreshCw, Copy, Check, Trash2, MailOpen, Eye } from "lucide-react";
+import { Mail, RefreshCw, Copy, Check, Trash2, MailOpen, Eye, Info } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { MailAccount, MailMessage } from "../types";
 import { cn } from "../lib/utils";
