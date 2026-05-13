@@ -11,6 +11,7 @@ export default function SMSSection() {
   const [messages, setMessages] = useState<SMSMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -19,13 +20,14 @@ export default function SMSSection() {
 
   const fetchNumbers = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await axios.get("/api/sms/numbers");
-      // Assuming res.data is an array or has a property containing numbers
       setNumbers(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      // Fallback/Mock data if API fails to show UI
+      setError(err.response?.data?.error || "فشل تحميل الأرقام من السيرفر");
+      // Fallback/Mock data
       setNumbers([
         { id: "1", number: "+1234567890", country: "United States", countryCode: "US", updatedAt: "الآن" },
         { id: "2", number: "+44123456789", country: "United Kingdom", countryCode: "GB", updatedAt: "منذ دقيقة" },
@@ -38,11 +40,13 @@ export default function SMSSection() {
 
   const fetchMessages = async (num: string) => {
     setLoadingMessages(true);
+    setError(null);
     try {
       const res = await axios.get(`/api/sms/messages/${num}`);
       setMessages(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setError("فشل تحديث الرسائل لهذا الرقم");
       setMessages([
         { id: "m1", from: "Google", text: "كود التحقق الخاص بك هو 123456", added: "منذ ثانيتين" },
         { id: "m2", from: "WhatsApp", text: "لا تشارك كود واتساب الخاص بك مع أحد: 987-654", added: "منذ دقيقة" },
@@ -83,6 +87,12 @@ export default function SMSSection() {
               <RefreshCw size={14} className={cn(loading && "animate-spin")} />
             </button>
           </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-100 p-3 rounded-lg text-[10px] text-red-600 font-bold mb-2">
+              {error}
+            </div>
+          )}
 
           <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
             {loading ? (

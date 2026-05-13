@@ -6,24 +6,30 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+const app = express();
+
 async function startServer() {
-  const app = express();
   const PORT = 3000;
 
   app.use(express.json());
 
-  // Proxy for SMS Inbox API to keep token secret
+  // Proxy for SMS Inbox API
   app.get("/api/sms/numbers", async (req, res) => {
     try {
       const token = process.env.SMS_INBOX_TOKEN || "98b164d371f877e037f472916c08fcce";
-      // We'll try to fetch the numbers. If this fails, we might need the correct endpoint.
-      // Many of these sites just have a public list of numbers on the homepage but an API for private ones.
-      // We will try a common endpoint pattern.
-      const response = await axios.get(`https://smsinbox.online/api/get-numbers?token=${token}`);
+      // Assuming a correct endpoint structure for smsinbox.online
+      // If the domain is unreachable, we will return a clear message.
+      const response = await axios.get(`https://smsinbox.online/api/get-numbers?token=${token}`, {
+        timeout: 5000
+      });
       res.json(response.data);
     } catch (error: any) {
-      console.error("SMS Numbers Error:", error.message);
-      res.status(500).json({ error: "Failed to fetch numbers", details: error.message });
+      console.error("SMS Numbers Proxy Error:", error.message);
+      res.status(500).json({ 
+        error: "فشل الاتصال بخدمة الأرقام", 
+        message: error.message,
+        tip: "تأكد من أن التوكن والرابط صحيحان"
+      });
     }
   });
 
@@ -31,17 +37,43 @@ async function startServer() {
     try {
       const { number } = req.params;
       const token = process.env.SMS_INBOX_TOKEN || "98b164d371f877e037f472916c08fcce";
-      const response = await axios.get(`https://smsinbox.online/api/get-messages?token=${token}&number=${number}`);
+      const response = await axios.get(`https://smsinbox.online/api/get-messages?token=${token}&number=${number}`, {
+        timeout: 5000
+      });
       res.json(response.data);
     } catch (error: any) {
-      console.error("SMS Messages Error:", error.message);
-      res.status(500).json({ error: "Failed to fetch messages", details: error.message });
+      console.error("SMS Messages Proxy Error:", error.message);
+      res.status(500).json({ error: "فشل جلب الرسائل", message: error.message });
+    }
+  });
+
+  // Mail.tm Proxy (to avoid CORS and handle headers)
+  app.all("/api/mail-proxy/*", async (req, res) => {
+    try {
+      const targetPath = req.params[0];
+      const url = `https://api.mail.tm/${targetPath}`;
+      const response = await axios({
+        method: req.method,
+        url,
+        data: req.body,
+        headers: {
+          ...req.headers,
+          host: 'api.mail.tm',
+          'accept': 'application/json',
+          'content-type': 'application/json'
+        },
+        params: req.query
+      });
+      res.json(response.data);
+    } catch (error: any) {
+      console.error("Mail Proxy Error:", error.response?.data || error.message);
+      res.status(error.response?.status || 500).json(error.response?.data || { error: error.message });
     }
   });
 
   // Health check
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
+    res.json({ status: "ok", env: process.env.NODE_ENV });
   });
 
   // Vite middleware for development
@@ -59,9 +91,14 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  // Only listen if not on Vercel (Vercel handles the server)
+  if (process.env.VERCEL !== "1") {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
 }
 
 startServer();
+
+export default app;

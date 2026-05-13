@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { MailAccount, MailMessage } from "../types";
 import { cn } from "../lib/utils";
 
-const API_BASE = "https://api.mail.tm";
+const API_BASE = "/api/mail-proxy";
 
 export default function MailSection() {
   const [account, setAccount] = useState<MailAccount | null>(null);
